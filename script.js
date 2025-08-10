@@ -195,6 +195,11 @@ class GameStateManager {
             this.state.stats.moves++;
             document.getElementById('moves-count').innerText = this.state.stats.moves;
 
+            // NEW: Add haptic feedback on successful move
+            if (navigator.vibrate) {
+                navigator.vibrate(20);
+            }
+
             const collectible = maze.collectibles.find(c => c.x === newX && c.y === newY && !c.collected);
             if (collectible) {
                 collectible.collected = true;
@@ -276,7 +281,7 @@ function renderStartScreen(manager) {
                     <h4>How to Play:</h4>
                     <ul>
                         <li>• Use arrow keys or WASD to move</li>
-                        <li>• Collect hearts to reveal messages</li>
+                        <li>• On mobile, swipe on the maze to move</li>
                         <li>• Reach the bottom-right corner to win!</li>
                     </ul>
                 </div>
@@ -328,6 +333,7 @@ function renderGameScreen(manager) {
                 <div></div>
             </div>
             <p class="text-center text-muted-foreground desktop-only">Use Arrow Keys or WASD to move • Press P or ESC to pause</p>
+            <p class="text-center text-muted-foreground md-hidden">Swipe on the maze or use the controls to move.</p>
         </div>
     `;
 
@@ -421,6 +427,7 @@ function gameLoop(manager) {
     }
 
     const canvas = document.getElementById('maze-canvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     const { maze, player } = state;
 
@@ -517,6 +524,40 @@ function addGameEventListeners(manager) {
     document.querySelectorAll('[data-move]').forEach(button => {
         button.onclick = (e) => manager.movePlayer(e.currentTarget.dataset.move);
     });
+
+    // NEW: Swipe controls
+    const canvas = document.getElementById('maze-canvas');
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchEndX = 0;
+    let touchEndY = 0;
+    
+    canvas.addEventListener('touchstart', function(e) {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+    }, false);
+
+    canvas.addEventListener('touchend', function(e) {
+        touchEndX = e.changedTouches[0].screenX;
+        touchEndY = e.changedTouches[0].screenY;
+        handleSwipe();
+    }, false); 
+
+    function handleSwipe() {
+        const dx = touchEndX - touchStartX;
+        const dy = touchEndY - touchStartY;
+        const swipeThreshold = 50; // Min distance for a swipe
+
+        if (Math.abs(dx) > Math.abs(dy)) { // Horizontal swipe
+            if (Math.abs(dx) > swipeThreshold) {
+                manager.movePlayer(dx > 0 ? 'right' : 'left');
+            }
+        } else { // Vertical swipe
+            if (Math.abs(dy) > swipeThreshold) {
+                manager.movePlayer(dy > 0 ? 'down' : 'up');
+            }
+        }
+    }
 }
 
 
